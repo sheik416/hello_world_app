@@ -144,6 +144,7 @@ DEFINITION
 
 resource "aws_iam_role" "ecs_task_execution" {
   name = "ecs_task_execution_role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -156,7 +157,30 @@ resource "aws_iam_role" "ecs_task_execution" {
       }
     ]
   })
+}
 
+# Create a custom IAM policy with full access to ECS and ECR
+data "aws_iam_policy_document" "ecs_full_access_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecs:*",
+      "ecr:*",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "ecs_full_access" {
+  name        = "ECSFullAccessPolicy"
+  description = "Policy granting full access to ECS and ECR"
+  policy      = data.aws_iam_policy_document.ecs_full_access_policy.json
+}
+
+# Attach the custom policy to the ecs_task_execution role
+resource "aws_iam_role_policy_attachment" "ecs_full_access_attachment" {
+  policy_arn = aws_iam_policy.ecs_full_access.arn
+  role       = aws_iam_role.ecs_task_execution.name
 }
 
 ## security group for the ECS service
