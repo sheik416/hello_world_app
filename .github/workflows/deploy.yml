@@ -1,0 +1,43 @@
+# deploy.yml
+name: Deploy Node js App to ECR # name
+
+on:
+  push: 
+   branches: # the branch to be deployed
+      - 'main'
+    
+jobs:
+
+    build:
+        
+        name: Build Image # build name
+        runs-on: ubuntu-latest # build os
+
+        steps: # sequence of tasks to be executed
+
+            - name: Check out code 
+            # Check the Dockerfile to build the docker image
+              uses: actions/checkout@v2
+            
+            - name: Configure AWS credentials 
+            # Programmatic authentication to aws
+              uses: aws-actions/configure-aws-credentials@v1
+              with:
+                    aws-access-key-id: $
+                    aws-secret-access-key: $
+                    aws-region: $
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v1
+
+            - name: Build, tag, and push image to Amazon ECR 
+            # copying the code from repo i.e. Dockerfile, versioning 
+            # the docker image, and pushing it to ECR.
+              env:
+                ECR_REGISTRY: 349896756653.dkr.ecr.us-east-2.amazonaws.com
+                ECR_REPOSITORY: nodejs
+                IMAGE_TAG: nodejs_simple_app
+              run: |
+                docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+                docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
