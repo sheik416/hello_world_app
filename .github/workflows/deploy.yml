@@ -44,9 +44,9 @@ jobs:
                 
             - name: Update ECS Task Definition
               env:
-                ECS_CLUSTER: my-ecs-cluster-name
-                ECS_SERVICE: my-ecs-service-name
-                CONTAINER_NAME: my-container-name
+                ECS_CLUSTER: arn:aws:ecs:us-east-2:349896756653:cluster/example-cluster
+                ECS_SERVICE: arn:aws:ecs:us-east-2:349896756653:service/example-cluster/hello-world-service
+                CONTAINER_NAME: hello-world-app
               run: |
                 task_definition=$(aws ecs describe-services --cluster $ECS_CLUSTER --service $ECS_SERVICE --query 'services[0].taskDefinition' --output text)
                 new_task_definition=$(echo $task_definition | jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.containerDefinitions[0].image=$IMAGE | .taskDefinitionArn=null | del(.taskDefinitionArn)')
