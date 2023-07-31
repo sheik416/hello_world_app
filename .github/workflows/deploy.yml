@@ -41,3 +41,18 @@ jobs:
               run: |
                 docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
                 docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+                
+            - name: Update ECS Task Definition
+              env:
+                ECS_CLUSTER: my-ecs-cluster-name
+                ECS_SERVICE: my-ecs-service-name
+                CONTAINER_NAME: my-container-name
+              run: |
+                task_definition=$(aws ecs describe-services --cluster $ECS_CLUSTER --service $ECS_SERVICE --query 'services[0].taskDefinition' --output text)
+                new_task_definition=$(echo $task_definition | jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.containerDefinitions[0].image=$IMAGE | .taskDefinitionArn=null | del(.taskDefinitionArn)')
+      
+                echo "Registering new task definition"
+                registered_task_definition=$(aws ecs register-task-definition --cli-input-json "$new_task_definition")
+      
+                echo "Updating service"
+                aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $(echo $registered_task_definition | jq -r '.taskDefinition.taskDefinitionArn')

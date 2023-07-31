@@ -230,3 +230,96 @@ resource "aws_ecs_service" "hello_world" {
 
   depends_on = [aws_lb_listener.hello_world]
 }
+
+# Create a new VPC
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16" # Replace with your desired VPC CIDR block
+  tags = {
+    Name = "Main VPC"
+  }
+}
+
+# Create a private subnet within the VPC
+resource "aws_subnet" "private_subnet_a" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.10.0/24" # Replace with your desired subnet CIDR block
+  availability_zone = "us-east-2a" # Replace with your desired availability zone
+
+  tags = {
+    Name = "Private Subnet"
+  }
+}
+
+# Create another private subnet within the VPC in us-east-2b (replace with your desired availability zones)
+resource "aws_subnet" "private_subnet_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.20.0/24" # Replace with your desired subnet CIDR block
+  availability_zone = "us-east-2b"
+
+  tags = {
+    Name = "Private Subnet B"
+  }
+}
+
+# Create a security group to allow RDS MySQL traffic from within the VPC
+resource "aws_security_group" "rds_security_group" {
+  name_prefix = "rds_security_group_"
+
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Create a DB subnet group for the private subnets
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name       = "my-rds-subnet-group"
+  subnet_ids = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id]
+}
+
+# Create an RDS MySQL instance in the private subnet
+resource "aws_db_instance" "rds_mysql" {
+  allocated_storage    = 20
+  engine               = "mysql"
+  engine_version       = "5.7"
+  instance_class       = "db.t2.micro"
+  identifier           = "my-rds-mysql-instance"
+  db_name              = "mydb"
+  username             = "dbadmin"
+  password             = "dbpassword" # Replace with your desired password
+
+  vpc_security_group_ids = [aws_security_group.rds_security_group.id]
+
+  db_subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
+
+  apply_immediately = true
+}
+
+# Create VPC peering between the new VPC and default VPC
+resource "aws_vpc_peering_connection" "peer" {
+  peer_vpc_id      = data.aws_vpc.default.id
+  vpc_id           = aws_vpc.main.id
+  auto_accept      = true
+}
+
+# Create a route in the new VPC's route table to route traffic to the default VPC via VPC peering
+resource "aws_route" "peer_route" {
+  route_table_id            = aws_vpc.main.default_route_table_id
+  destination_cidr_block    = data.aws_vpc.default.cidr_block
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
