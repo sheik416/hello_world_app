@@ -42,12 +42,47 @@ jobs:
                 docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
                 docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
                 
+            # - name: Update ECS Task Definition
+            #   env:
+            #     ECS_CLUSTER: arn:aws:ecs:us-east-2:349896756653:cluster/example-cluster
+            #     ECS_SERVICE: arn:aws:ecs:us-east-2:349896756653:service/example-cluster/hello-world-service
+            #     CONTAINER_NAME: hello-world-app
+            #   run: |
+            #     task_definition=$(aws ecs describe-services --cluster $ECS_CLUSTER --service $ECS_SERVICE --query 'services[0].taskDefinition' --output text)
+            #     new_task_definition=$(echo $task_definition | jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.containerDefinitions[0].image=$IMAGE | .taskDefinitionArn=null | del(.taskDefinitionArn)')
+      
+            #     echo "Registering new task definition"
+            #     registered_task_definition=$(aws ecs register-task-definition --cli-input-json "$new_task_definition")
+      
+            #     echo "Updating service"
+            #     aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $(echo $registered_task_definition | jq -r '.taskDefinition.taskDefinitionArn')
+
             - name: Update ECS Task Definition
               env:
+                AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+                AWS_REGION: ${{ secrets.AWS_REGION }}
+                AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                ECR_REGISTRY: 349896756653.dkr.ecr.us-east-2.amazonaws.com
+                ECR_REPOSITORY: nodejs
+                IMAGE_TAG: nodejs_simple_app
                 ECS_CLUSTER: arn:aws:ecs:us-east-2:349896756653:cluster/example-cluster
                 ECS_SERVICE: arn:aws:ecs:us-east-2:349896756653:service/example-cluster/hello-world-service
                 CONTAINER_NAME: hello-world-app
               run: |
+                echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
+                echo "AWS_REGION: $AWS_REGION"
+                echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+                echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+                echo "ECR_REGISTRY: $ECR_REGISTRY"
+                echo "ECR_REPOSITORY: $ECR_REPOSITORY"
+                echo "IMAGE_TAG: $IMAGE_TAG"
+                echo "ECS_CLUSTER: $ECS_CLUSTER"
+                echo "ECS_SERVICE: $ECS_SERVICE"
+                echo "CONTAINER_NAME: $CONTAINER_NAME"
+      
+                # Rest of your update task definition steps...
+      
                 task_definition=$(aws ecs describe-services --cluster $ECS_CLUSTER --service $ECS_SERVICE --query 'services[0].taskDefinition' --output text)
                 new_task_definition=$(echo $task_definition | jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.containerDefinitions[0].image=$IMAGE | .taskDefinitionArn=null | del(.taskDefinitionArn)')
       
